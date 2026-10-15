@@ -17,6 +17,14 @@ function jsonOptions(method, body) {
     };
 }
 
+function showMessage(element, text, type = "default") {
+    element.className = type === "default"
+        ? "message"
+        : "message message-" + type;
+
+    element.textContent = text;
+}
+
 function getReports(filters) {
     const params = new URLSearchParams();
     for (const [name, value] of Object.entries(filters || {})) {

@@ -20,37 +20,32 @@ function showReport(report) {
 
 async function loadReport() {
     if (!reportId) {
-        message.className = "message message-error";
-        message.textContent = "No report selected.";
+        showMessage(message, "No report selected.", "error");
         return;
     }
 
     try {
         const report = await getReport(reportId);
         showReport(report);
-        message.textContent = "";
+        showMessage(message, "");
         reportDetails.hidden = false;
         upvoteForm.hidden = false;
     } catch (error) {
-        message.className = "message message-error";
-        message.textContent = "Could not load the report: " + error.message;
+        showMessage(message, "Could not load the report: " + error.message, "error");
     }
 }
 
 upvoteForm.addEventListener("submit", async event => {
     event.preventDefault();
-    upvoteMessage.className = "message";
-    upvoteMessage.textContent = "Sending...";
+    showMessage(upvoteMessage, "Sending...");
 
     try {
         const report = await upvoteReport(reportId, document.getElementById("voterEmail").value);
         showReport(report);
         upvoteForm.reset();
-        upvoteMessage.className = "message message-success";
-        upvoteMessage.textContent = "Thank you, your vote was added.";
+        showMessage(upvoteMessage, "Thank you, your vote was added.", "success");
     } catch (error) {
-        upvoteMessage.className = "message message-error";
-        upvoteMessage.textContent = error.message;
+        showMessage(upvoteMessage, error.message, "error");
     }
 });
 

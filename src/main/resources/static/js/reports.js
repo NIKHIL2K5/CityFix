@@ -45,19 +45,22 @@ function showStats(stats) {
 }
 
 async function loadReports() {
-    message.className = "message";
-    message.textContent = "Loading reports...";
+    showMessage(message, "Loading reports...");
     reportList.replaceChildren();
 
     try {
         const filters = Object.fromEntries(new FormData(filterForm));
         const [reports, stats] = await Promise.all([getReports(filters), getStats()]);
         showStats(stats);
-        message.textContent = reports.length === 0 ? "No reports found. Try changing the filters." : "";
+        showMessage(
+            message,
+            reports.length === 0
+                ? "No reports found. Try changing the filters."
+                : ""
+            );
         reports.forEach(report => reportList.append(createReportItem(report)));
     } catch (error) {
-        message.className = "message message-error";
-        message.textContent = "Could not load reports: " + error.message;
+        showMessage(message, "Could not load reports: " + error.message, "error");
     }
 }
 

@@ -3,8 +3,7 @@ const message = document.getElementById("message");
 
 reportForm.addEventListener("submit", async event => {
     event.preventDefault();
-    message.className = "message";
-    message.textContent = "Sending...";
+    showMessage(message, "Sending...");
 
     const report = Object.fromEntries(new FormData(reportForm));
     report.category = report.category || null;
@@ -13,7 +12,6 @@ reportForm.addEventListener("submit", async event => {
         const createdReport = await createReport(report);
         window.location.href = "report.html?id=" + createdReport.id;
     } catch (error) {
-        message.className = "message message-error";
-        message.textContent = error.message;
+        showMessage(message, error.message, "error");
     }
 });

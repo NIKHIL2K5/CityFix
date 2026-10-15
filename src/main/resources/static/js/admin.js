@@ -48,32 +48,33 @@ function createReportRow(report) {
 
 async function changeStatus(report, select, badge) {
     const newStatus = select.value;
-    message.className = "message";
-    message.textContent = "Saving...";
+    showMessage(message, "Saving...");
 
     try {
         await updateStatus(report.id, newStatus);
         report.status = newStatus;
         badge.className = badgeClass(newStatus);
         badge.textContent = formatLabel(newStatus);
-        message.className = "message message-success";
-        message.textContent = "Status of \"" + report.title + "\" changed to " + formatLabel(newStatus) + ".";
+        showMessage(
+            message,
+            "Status of \"" + report.title + "\" changed to " + formatLabel(newStatus) + ".",
+            "success"
+        );
     } catch (error) {
-        message.className = "message message-error";
-        message.textContent = "Could not change the status: " + error.message;
+        showMessage(message, "Could not change the status: " + error.message, "error");
         select.value = report.status;
     }
 }
 
 async function loadReports() {
-    message.textContent = "Loading reports...";
+    showMessage(message, "Loading reports...");
+
     try {
         const reports = await getReports({});
         reportList.replaceChildren(...reports.map(createReportRow));
-        message.textContent = "";
+        showMessage(message, "");
     } catch (error) {
-        message.className = "message message-error";
-        message.textContent = "Could not load reports: " + error.message;
+        showMessage(message, "Could not load reports: " + error.message, "error");
     }
 }
 
