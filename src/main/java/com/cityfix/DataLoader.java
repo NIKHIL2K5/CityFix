@@ -3,7 +3,9 @@ package com.cityfix;
 import com.cityfix.model.Category;
 import com.cityfix.model.Report;
 import com.cityfix.model.ReportStatus;
+import com.cityfix.model.Upvote;
 import com.cityfix.repository.ReportRepository;
+import com.cityfix.repository.UpvoteRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -13,9 +15,12 @@ import java.time.LocalDateTime;
 public class DataLoader implements CommandLineRunner {
 
     private final ReportRepository reportRepository;
+    private final UpvoteRepository upvoteRepository;
 
-    public DataLoader(ReportRepository reportRepository) {
+    public DataLoader(ReportRepository reportRepository,
+                      UpvoteRepository upvoteRepository) {
         this.reportRepository = reportRepository;
+        this.upvoteRepository = upvoteRepository;
     }
 
     @Override
@@ -42,8 +47,9 @@ public class DataLoader implements CommandLineRunner {
                 Category.OTHER, "Hillside", "Footpath behind Oak Avenue", ReportStatus.REPORTED, 2, 1, 0);
     }
 
-    private void addReport(String title, String description, Category category, String area, String address,
-                           ReportStatus status, int upvoteCount, int daysAgo, int daysUntilUpdate) {
+    private void addReport(String title, String description, Category category,
+                           String area, String address, ReportStatus status,
+                           int upvoteCount, int daysAgo, int daysUntilUpdate) {
         LocalDateTime createdAt = LocalDateTime.now().minusDays(daysAgo);
         LocalDateTime updatedAt = createdAt.plusDays(daysUntilUpdate);
 
@@ -59,9 +65,20 @@ public class DataLoader implements CommandLineRunner {
         report.setUpvoteCount(upvoteCount);
         report.setCreatedAt(createdAt);
         report.setUpdatedAt(updatedAt);
+
         if (status == ReportStatus.FIXED) {
             report.setFixedAt(updatedAt);
         }
-        reportRepository.save(report);
+
+        Report savedReport = reportRepository.save(report);
+
+        for (int i = 1; i <= upvoteCount; i++) {
+            Upvote upvote = new Upvote();
+            upvote.setReport(savedReport);
+            upvote.setVoterEmail(
+                    "sample-voter-" + i + "-report-" + savedReport.getId() + "@example.com");
+            upvote.setCreatedAt(createdAt);
+            upvoteRepository.save(upvote);
+        }
     }
 }
