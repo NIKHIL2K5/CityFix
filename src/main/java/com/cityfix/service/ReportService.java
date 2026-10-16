@@ -1,3 +1,4 @@
+
 package com.cityfix.service;
 
 import com.cityfix.dto.CreateReportRequest;
@@ -9,12 +10,15 @@ import com.cityfix.model.ReportStatus;
 import com.cityfix.model.Upvote;
 import com.cityfix.repository.ReportRepository;
 import com.cityfix.repository.UpvoteRepository;
+import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,7 +59,8 @@ public class ReportService {
     }
 
     public Report findReportById(Long id) {
-        return reportRepository.findById(id).orElseThrow(() -> new ReportNotFoundException(id));
+        return reportRepository.findById(id)
+                .orElseThrow(() -> new ReportNotFoundException(id));
     }
 
     public List<Report> findReports(String area, ReportStatus status, Category category, String sort) {
@@ -84,6 +89,7 @@ public class ReportService {
     @Transactional
     public Report upvoteReport(Long id, String voterEmail) {
         Report report = findReportById(id);
+
         if (upvoteRepository.existsByReportIdAndVoterEmail(id, voterEmail)) {
             throw new DuplicateUpvoteException(voterEmail);
         }
@@ -92,10 +98,53 @@ public class ReportService {
         upvote.setReport(report);
         upvote.setVoterEmail(voterEmail);
         upvote.setCreatedAt(LocalDateTime.now());
-        upvoteRepository.save(upvote);
 
-        report.setUpvoteCount(report.getUpvoteCount() + 1);
-        return reportRepository.save(report);
+        try {
+            // Force the insert now so a unique-constraint violation
+            // can be translated into a duplicate-upvote exception.
+            upvoteRepository.saveAndFlush(upvote);
+        } catch (DataIntegrityViolationException exception) {
+            if (isUniqueConstraintViolation(exception)) {
+                throw new DuplicateUpvoteException(voterEmail);
+            }
+            throw exception;
+        }
+
+        // Increment the stored count atomically in the database.
+        int updatedRows = reportRepository.incrementUpvoteCount(id);
+
+        if (updatedRows == 0) {
+            throw new ReportNotFoundException(id);
+        }
+
+        // The bulk update clears the persistence context.
+        // Reload the report to return its current count.
+        return findReportById(id);
+    }
+
+    private boolean isUniqueConstraintViolation(Throwable exception) {
+        for (Throwable cause = exception;
+             cause != null;
+             cause = cause.getCause()) {
+
+            if (cause instanceof ConstraintViolationException violation
+                    && isUniqueViolation(violation.getSQLException())) {
+                return true;
+            }
+
+            if (cause instanceof SQLException sqlException
+                    && isUniqueViolation(sqlException)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isUniqueViolation(SQLException exception) {
+        return "23505".equals(exception.getSQLState())
+                || ("23000".equals(exception.getSQLState())
+                    && exception.getErrorCode() == 1062);
     }
 
     public Map<String, Map<String, Long>> getStats() {

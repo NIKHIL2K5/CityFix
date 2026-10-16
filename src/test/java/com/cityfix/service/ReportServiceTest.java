@@ -69,14 +69,28 @@ class ReportServiceTest {
         Report report = new Report();
         report.setId(1L);
         report.setUpvoteCount(2);
-        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
-        when(upvoteRepository.existsByReportIdAndVoterEmail(1L, "ben@example.com")).thenReturn(false);
-        when(reportRepository.save(report)).thenReturn(report);
+
+        Report updatedReport = new Report();
+        updatedReport.setId(1L);
+        updatedReport.setUpvoteCount(3);
+
+        when(reportRepository.findById(1L))
+                .thenReturn(Optional.of(report), Optional.of(updatedReport));
+
+        when(upvoteRepository.existsByReportIdAndVoterEmail(
+                1L, "ben@example.com")).thenReturn(false);
+
+        when(upvoteRepository.saveAndFlush(any(Upvote.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(reportRepository.incrementUpvoteCount(1L)).thenReturn(1);
 
         Report result = reportService.upvoteReport(1L, "ben@example.com");
 
         assertThat(result.getUpvoteCount()).isEqualTo(3);
-        verify(upvoteRepository).save(any(Upvote.class));
+
+        verify(upvoteRepository).saveAndFlush(any(Upvote.class));
+        verify(reportRepository).incrementUpvoteCount(1L);
     }
 
     @Test

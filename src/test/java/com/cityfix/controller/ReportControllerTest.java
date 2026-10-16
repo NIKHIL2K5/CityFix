@@ -6,6 +6,7 @@ import com.cityfix.model.Category;
 import com.cityfix.model.Report;
 import com.cityfix.model.ReportStatus;
 import com.cityfix.service.ReportService;
+import com.cityfix.exception.DuplicateUpvoteException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -82,4 +83,25 @@ class ReportControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
+
+    @Test
+    void duplicateUpvoteReturns409Conflict() throws Exception {
+        when(reportService.upvoteReport(1L, "ben@example.com"))
+                .thenThrow(new DuplicateUpvoteException("ben@example.com"));
+
+        String json = """
+              {
+              "voterEmail": "ben@example.com"
+               }
+                """;
+
+        mockMvc.perform(post("/api/reports/1/upvotes")
+                       .contentType(MediaType.APPLICATION_JSON)
+                       .content(json))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message")
+                        .value("ben@example.com has already upvoted this report"));
+    }
+
 }
